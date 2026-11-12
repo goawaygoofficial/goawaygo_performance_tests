@@ -53,7 +53,7 @@ export function setup() {
     if (!awake) sleep(5);
   }
   if (!awake) throw new Error(`${apiUrl} did not wake up`);
-  const warm = { headers: apiHeaders, tags: { kind: 'warmup' }, timeout: '60s' };
+  const warm = { headers, tags: { kind: 'warmup' }, timeout: '60s' };
   for (const path of [
     '/api/discover/ideas?count=6',
     '/api/discover/places?q=test',
@@ -65,9 +65,13 @@ export function setup() {
   http.get(`${apiUrl}/api/book/flights?from=DEL&to=BOM&depart=${DEPART}&currency=INR`, warm);
 }
 
+// Compressed answers, as the website and the app always ask for (k6 doesn't by default). Without it the ideas answer
+// (3.9 KB) took ~1 s from GitHub's runners although the server answered in 13 ms (Cloud Run's request logs).
+const headers = { ...apiHeaders, 'Accept-Encoding': 'gzip' };
+
 // name: one per endpoint (not per URL: place ids and dates differ).
 function get(path, kind, name) {
-  return http.get(`${apiUrl}${path}`, { headers: apiHeaders, tags: { kind, name } });
+  return http.get(`${apiUrl}${path}`, { headers, tags: { kind, name } });
 }
 
 export default function () {
