@@ -46,12 +46,10 @@ jobs:
           sudo mv "$RUNNER_TEMP/k6" /usr/local/bin/
 
       - name: Every script loads
-        env:
-          # Only to load the scripts (they refuse to start without a token); nothing is sent anywhere.
-          TEST_FAKES_TOKEN: inspect-only
         run: |
           shopt -s nullglob
           for script in k6/api/*.js k6/web/*.js; do
             echo "== $script"
-            k6 inspect "$script" >/dev/null
+            # A placeholder token only to load the script (it refuses to start without one); nothing is sent anywhere.
+            k6 inspect -e TEST_FAKES_TOKEN=inspect-only "$script" >/dev/null
           done
