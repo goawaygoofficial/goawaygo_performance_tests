@@ -5,15 +5,16 @@ app's** start-up time and scrolling on an emulator. Every test has limits that f
 after every deployment to dev and test (never prod: real users and real quotas live there) and record the result in
 the version's GitHub Release; a version moves up only after they passed in the environment below.
 
-| Script             | What                                                                                               | Limits (fail the run)                                                                                                     |
-| ------------------ | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `k6/api/browse.js` | 5 visitors browsing for 2 minutes: ideas, place search, destination pages, flights                 | errors < 1 %; p95 per read (health, ideas, places, airports, regions) < 800 ms; destination page < 2.5 s; flights < 1.5 s |
-| `k6/web/pages.js`  | Home, sign-in and privacy pages in Chromium, Core Web Vitals                                       | p75: LCP < 2.5 s, FCP < 1.8 s, CLS < 0.1, Home search usable < 3 s; all 10 visits complete                                |
-| `app/startup.sh`   | the app's cold start-up, 5 times                                                                   | median < 4 s (CI emulator; a phone is several times faster)                                                               |
-| `app/scroll.sh`    | scrolling Home, frames as they reach the screen (SurfaceFlinger: Flutter draws on its own surface) | janky frames < 60 %, p90 between frames < 66 ms; at least 20 frames measured                                              |
+| Script             | What                                                                                               | Limits (fail the run)                                                                                                                                               |
+| ------------------ | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `k6/api/browse.js` | 5 visitors browsing for 2 minutes: ideas, place search, destination pages, flights                 | server time (Server-Timing) p95: reads < 300 ms, flights < 800 ms, destination page < 1.5 s; end to end p95: reads < 1.5 s, flights < 2 s, page < 3 s; errors < 1 % |
+| `k6/web/pages.js`  | Home, sign-in and privacy pages in Chromium, Core Web Vitals                                       | p75: LCP < 2.5 s, FCP < 1.8 s, CLS < 0.1, Home search usable < 3 s; all 10 visits complete                                                                          |
+| `app/startup.sh`   | the app's cold start-up, 5 times                                                                   | median < 4 s (CI emulator; a phone is several times faster)                                                                                                         |
+| `app/scroll.sh`    | scrolling Home, frames as they reach the screen (SurfaceFlinger: Flutter draws on its own surface) | janky frames < 60 %, p90 between frames < 66 ms; at least 20 frames measured                                                                                        |
 
-The limits catch regressions; change one only with the reason in the pull request. Requests are measured from
-GitHub's runners, far from Singapore (about 0.25 s of every API request is the distance). The app limits are for a
+The limits catch regressions; change one only with the reason in the pull request. The API limits that matter are on the
+backend's own time (its `Server-Timing` header on test runs); end-to-end times from GitHub's runners, far from
+Singapore, have looser limits. The app limits are for a
 software-drawn CI emulator and were calibrated on its first runs.
 
 ## How a run works

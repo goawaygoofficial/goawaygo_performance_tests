@@ -5,6 +5,7 @@
 // Limits (thresholds) fail the run. Change them only with a reason in the pull request.
 import http from 'k6/http';
 import { check, group, sleep } from 'k6';
+import { Trend } from 'k6/metrics';
 
 import { apiHeaders, apiUrl } from '../lib/env.js';
 
@@ -24,20 +25,22 @@ export const options = {
     },
   },
   thresholds: {
-    // Almost nothing may fail.
+    // Almost nothing may fail; every answer must report the server's time.
     http_req_failed: ['rate<0.01'],
     checks: ['rate>0.99'],
-    // Fast reads, each on its own so a slow one is named in the report. Measured from GitHub's runners, far from
-    // Singapore: about 0.25 s of every request is the distance.
-    'http_req_duration{name:health}': ['p(95)<800'],
-    'http_req_duration{name:ideas}': ['p(95)<800'],
-    'http_req_duration{name:places}': ['p(95)<800'],
-    'http_req_duration{name:airports}': ['p(95)<800'],
-    'http_req_duration{name:regions}': ['p(95)<800'],
+    // Our code's own time (the backend's Server-Timing header on test runs): the limits that matter.
+    'server_ms{name:ideas}': ['p(95)<300'],
+    'server_ms{name:places}': ['p(95)<300'],
+    'server_ms{name:airports}': ['p(95)<300'],
+    'server_ms{name:regions}': ['p(95)<300'],
+    'server_ms{name:flights}': ['p(95)<800'],
     // A destination page does several things in parallel (AI cards, spots, photos).
-    'http_req_duration{kind:page}': ['p(95)<2500'],
-    // Flight prices and partner links.
-    'http_req_duration{kind:book}': ['p(95)<1500'],
+    'server_ms{name:destination}': ['p(95)<1500'],
+    // End to end, from GitHub's runners far from Singapore (~0.25 s of every request is the distance, and some
+    // answers take a few round trips more): catches outages and big slowdowns, not our code's milliseconds.
+    'http_req_duration{kind:read}': ['p(95)<1500'],
+    'http_req_duration{kind:book}': ['p(95)<2000'],
+    'http_req_duration{kind:page}': ['p(95)<3000'],
   },
   // Each request's own tag, not one per URL (place ids differ).
   tags: { suite: 'api' },
@@ -69,9 +72,21 @@ export function setup() {
 // (3.9 KB) took ~1 s from GitHub's runners although the server answered in 13 ms (Cloud Run's request logs).
 const headers = { ...apiHeaders, 'Accept-Encoding': 'gzip' };
 
+// The backend's own time for each answer, from its Server-Timing header (test runs only: "app;dur=12.3").
+const serverMs = new Trend('server_ms', true);
+
 // name: one per endpoint (not per URL: place ids and dates differ).
 function get(path, kind, name) {
-  return http.get(`${apiUrl}${path}`, { headers, tags: { kind, name } });
+  const response = http.get(`${apiUrl}${path}`, { headers, tags: { kind, name } });
+  // Our API's answers report it (the actuator's health check doesn't).
+  const timing = /app;dur=([0-9.]+)/.exec(response.headers['Server-Timing'] || '');
+  if (path.startsWith('/api/')) {
+    check(response, { 'server time reported': () => timing !== null });
+  }
+  if (timing) {
+    serverMs.add(Number(timing[1]), { name });
+  }
+  return response;
 }
 
 export default function () {
