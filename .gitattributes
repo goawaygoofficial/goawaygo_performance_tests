@@ -1,0 +1,5 @@
+# Same line endings on every OS (LF), like the product repos.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary

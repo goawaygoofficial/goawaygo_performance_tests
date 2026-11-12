@@ -1,0 +1,13 @@
+{
+  "name": "goawaygo-performance-tests",
+  "private": true,
+  "type": "module",
+  "description": "Performance tests of GoAwayGo: API and website (k6), Android app start-up and scrolling.",
+  "scripts": {
+    "check": "prettier --check .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "prettier": "^3.9.10"
+  }
+}

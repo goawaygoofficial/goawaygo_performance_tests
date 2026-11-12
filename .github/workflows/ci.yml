@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, test, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    name: Check scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format
+        run: npm run check
+
+      - name: Install k6 (checksum verified)
+        env:
+          K6_VERSION: 2.3.0
+        run: |
+          base="https://github.com/grafana/k6/releases/download/v${K6_VERSION}"
+          file="k6-v${K6_VERSION}-linux-amd64.tar.gz"
+          curl -sSfL -o "$file" "$base/$file"
+          curl -sSfL -o checksums.txt "$base/k6-v${K6_VERSION}-checksums.txt"
+          grep " $file\$" checksums.txt | sha256sum --check --strict
+          tar -xzf "$file" --strip-components=1 "k6-v${K6_VERSION}-linux-amd64/k6"
+          sudo mv k6 /usr/local/bin/
+
+      - name: Every script loads
+        run: |
+          shopt -s nullglob
+          for script in k6/*/*.js; do
+            echo "== $script"
+            k6 inspect "$script" >/dev/null
+          done
