@@ -43,16 +43,26 @@ export const options = {
   tags: { suite: 'api' },
 };
 
-// Wakes the service before measuring: a cold start (up to ~20 s after idle) is not what this test is about.
+// Wakes the service before measuring: a cold start (up to ~20 s after idle) is not what this test is about. Then each
+// endpoint once: the first request after a deploy loads what that endpoint keeps in memory (e.g. the idea list from
+// the database) while the others wait, which is part of the cold start too.
 export function setup() {
-  for (let attempt = 0; attempt < 12; attempt++) {
-    const response = http.get(`${apiUrl}/actuator/health`, { tags: { kind: 'warmup' }, timeout: '60s' });
-    if (response.status === 200) {
-      return;
-    }
-    sleep(5);
+  let awake = false;
+  for (let attempt = 0; attempt < 12 && !awake; attempt++) {
+    awake = http.get(`${apiUrl}/actuator/health`, { tags: { kind: 'warmup' }, timeout: '60s' }).status === 200;
+    if (!awake) sleep(5);
   }
-  throw new Error(`${apiUrl} did not wake up`);
+  if (!awake) throw new Error(`${apiUrl} did not wake up`);
+  const warm = { headers: apiHeaders, tags: { kind: 'warmup' }, timeout: '60s' };
+  for (const path of [
+    '/api/discover/ideas?count=6',
+    '/api/discover/places?q=test',
+    '/api/book/airports?q=del',
+    '/api/regions',
+  ]) {
+    http.get(`${apiUrl}${path}`, warm);
+  }
+  http.get(`${apiUrl}/api/book/flights?from=DEL&to=BOM&depart=${DEPART}&currency=INR`, warm);
 }
 
 // name: one per endpoint (not per URL: place ids and dates differ).
