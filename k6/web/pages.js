@@ -29,6 +29,8 @@ export const options = {
     browser_web_vital_cls: ['p(75)<0.1'],
     home_search_ready: ['p(75)<3000'],
     checks: ['rate>0.99'],
+    // Every visit must complete: a browser that can't start would otherwise "pass" with nothing measured.
+    iterations: ['count>=10'],
   },
 };
 

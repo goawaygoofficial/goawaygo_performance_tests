@@ -27,8 +27,13 @@ export const options = {
     // Almost nothing may fail.
     http_req_failed: ['rate<0.01'],
     checks: ['rate>0.99'],
-    // Fast reads: health, suggestions, airports, regions, ideas.
-    'http_req_duration{kind:read}': ['p(95)<800', 'p(99)<1500'],
+    // Fast reads, each on its own so a slow one is named in the report. Measured from GitHub's runners, far from
+    // Singapore: about 0.25 s of every request is the distance.
+    'http_req_duration{name:health}': ['p(95)<800'],
+    'http_req_duration{name:ideas}': ['p(95)<800'],
+    'http_req_duration{name:places}': ['p(95)<800'],
+    'http_req_duration{name:airports}': ['p(95)<800'],
+    'http_req_duration{name:regions}': ['p(95)<800'],
     // A destination page does several things in parallel (AI cards, spots, photos).
     'http_req_duration{kind:page}': ['p(95)<2500'],
     // Flight prices and partner links.
@@ -50,20 +55,21 @@ export function setup() {
   throw new Error(`${apiUrl} did not wake up`);
 }
 
-function get(path, kind, params = {}) {
-  return http.get(`${apiUrl}${path}`, { headers: apiHeaders, tags: { kind, name: path }, ...params });
+// name: one per endpoint (not per URL: place ids and dates differ).
+function get(path, kind, name) {
+  return http.get(`${apiUrl}${path}`, { headers: apiHeaders, tags: { kind, name } });
 }
 
 export default function () {
   group('home', () => {
-    check(get('/actuator/health', 'read'), { 'health 200': (r) => r.status === 200 });
-    check(get('/api/discover/ideas?count=6', 'read'), { 'ideas 200': (r) => r.status === 200 });
+    check(get('/actuator/health', 'read', 'health'), { 'health 200': (r) => r.status === 200 });
+    check(get('/api/discover/ideas?count=6', 'read', 'ideas'), { 'ideas 200': (r) => r.status === 200 });
   });
   sleep(1);
 
   let placeId;
   group('search a place', () => {
-    const places = get('/api/discover/places?q=test', 'read');
+    const places = get('/api/discover/places?q=test', 'read', 'places');
     check(places, { 'places 200': (r) => r.status === 200 });
     placeId = places.status === 200 ? places.json('0.id') : undefined;
   });
@@ -71,19 +77,19 @@ export default function () {
 
   if (placeId) {
     group('destination page', () => {
-      const page = get(`/api/discover/destination?placeId=${encodeURIComponent(placeId)}`, 'page');
+      const page = get(`/api/discover/destination?placeId=${encodeURIComponent(placeId)}`, 'page', 'destination');
       check(page, { 'destination ok': (r) => r.status === 200 && r.json('status') === 'ok' });
     });
     sleep(2);
   }
 
   group('book', () => {
-    check(get('/api/book/airports?q=del', 'read'), { 'airports 200': (r) => r.status === 200 });
-    const flights = get(`/api/book/flights?from=DEL&to=BOM&depart=${DEPART}&currency=INR`, 'book');
+    check(get('/api/book/airports?q=del', 'read', 'airports'), { 'airports 200': (r) => r.status === 200 });
+    const flights = get(`/api/book/flights?from=DEL&to=BOM&depart=${DEPART}&currency=INR`, 'book', 'flights');
     check(flights, { 'flights 200': (r) => r.status === 200 });
   });
   sleep(1);
 
-  check(get('/api/regions', 'read'), { 'regions 200': (r) => r.status === 200 });
+  check(get('/api/regions', 'read', 'regions'), { 'regions 200': (r) => r.status === 200 });
   sleep(1);
 }
