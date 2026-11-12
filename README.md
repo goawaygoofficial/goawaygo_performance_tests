@@ -33,7 +33,8 @@ Install k6 (https://grafana.com/docs/k6/latest/set-up/install-k6/), then, with t
 file; the owner reads it from Secret Manager):
 
 ```bash
-TEST_FAKES_TOKEN="$(gcloud secrets versions access latest --secret goawaygo-test-fakes-token --project goawaygo-staging)" \
+# tr: on Windows gcloud ends its output with "\r"
+TEST_FAKES_TOKEN="$(gcloud secrets versions access latest --secret goawaygo-test-fakes-token --project goawaygo-staging | tr -d '\r')" \
   GOAWAYGO_ENV=dev k6 run k6/api/browse.js
 ```
 
