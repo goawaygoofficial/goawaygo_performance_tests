@@ -1,0 +1,10 @@
+# Scrolls the open Home screen down and up (no launch: scroll.sh measures only these frames).
+appId: com.goawaygo.app
+---
+- repeat:
+    times: 4
+    commands:
+      - scroll
+      - swipe:
+          direction: DOWN
+          duration: 400
