@@ -41,13 +41,15 @@ jobs:
           curl -sSfL -o "$file" "$base/$file"
           curl -sSfL -o checksums.txt "$base/k6-v${K6_VERSION}-checksums.txt"
           grep " $file\$" checksums.txt | sha256sum --check --strict
-          tar -xzf "$file" --strip-components=1 "k6-v${K6_VERSION}-linux-amd64/k6"
-          sudo mv k6 /usr/local/bin/
+          # Into the runner's temp folder: the performance repo has a k6/ folder of scripts.
+          tar -xzf "$file" -C "$RUNNER_TEMP" --strip-components=1 "k6-v${K6_VERSION}-linux-amd64/k6"
+          sudo mv "$RUNNER_TEMP/k6" /usr/local/bin/
 
       - name: Every script loads
         run: |
           shopt -s nullglob
-          for script in k6/*/*.js; do
+          for script in k6/api/*.js k6/web/*.js; do
             echo "== $script"
-            k6 inspect "$script" >/dev/null
+            # A placeholder token only to load the script (it refuses to start without one); nothing is sent anywhere.
+            k6 inspect -e TEST_FAKES_TOKEN=inspect-only "$script" >/dev/null
           done

@@ -1,0 +1,17 @@
+# Opens Home as a guest (before scroll.yaml is measured).
+appId: com.goawaygo.app
+---
+- launchApp:
+    clearState: true
+    permissions:
+      all: deny
+- extendedWaitUntil:
+    visible: 'SKIP'
+    timeout: 60000
+- tapOn: 'SKIP'
+- extendedWaitUntil:
+    visible: 'Where do you want to be\?'
+    timeout: 30000
+# Let the ideas load before measuring.
+- waitForAnimationToEnd:
+    timeout: 10000
