@@ -9,7 +9,7 @@ import { check } from 'k6';
 import http from 'k6/http';
 import { Trend } from 'k6/metrics';
 
-import { apiHeaders, apiUrl, webUrl } from '../lib/env.js';
+import { apiHeaders, apiUrl, webHeaders, webUrl } from '../lib/env.js';
 
 const searchReady = new Trend('home_search_ready', true);
 
@@ -53,6 +53,12 @@ export default async function () {
   await page.route(new RegExp(`^${apiUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`), async (route) => {
     await route.continue({ headers: { ...route.request().headers(), ...apiHeaders } });
   });
+  // The Cloudflare Access service token only on requests to our website (team-only in dev and test).
+  if (Object.keys(webHeaders).length > 0) {
+    await page.route(new RegExp(`^${webUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`), async (route) => {
+      await route.continue({ headers: { ...route.request().headers(), ...webHeaders } });
+    });
+  }
   try {
     const started = Date.now();
     await page.goto(`${webUrl}/home`, { waitUntil: 'load' });
