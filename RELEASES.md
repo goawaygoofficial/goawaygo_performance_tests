@@ -5,6 +5,8 @@ environment (`develop` → dev, `test` → test, `main` → prod). Each change b
 `develop`; "on test" and "on main" show whether it has been promoted there. Newest first; update this file
 in the PR that promotes changes.
 
+- 2026-11-14 · feat: website tests reach the team-only dev and test sites (#10) (on test, on main)
+- 2026-11-14 · Docs: only README.md, LINKS.md and RELEASES.md (#9) (on test, on main)
 - 2026-11-12 · feat: limit the backend's own time, looser end-to-end limits (#6) (on test, on main)
 - 2026-11-12 · fix: ask for compressed answers like real clients (#5) (on test, on main)
 - 2026-11-12 · fix: warm each API endpoint once before measuring (#4) (on test, on main)
