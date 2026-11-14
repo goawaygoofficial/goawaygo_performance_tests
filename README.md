@@ -61,6 +61,13 @@ TEST_FAKES_TOKEN="$(gcloud secrets versions access latest --secret goawaygo-test
 
 The app scripts need an emulator with a test build and Maestro (the app repo's `tests.yml` shows how).
 
+The dev and test websites are **team only** (Cloudflare Access, MVP 2): a browser must enter a one-time code sent to
+the team Gmail. Test runs get through with the Access service token "goawaygo-tests (dev and test websites)"
+(Cloudflare Zero Trust → Access controls → Service credentials; valid 1 year, until 2027-11-14): GitHub secrets
+`CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET` of the website repo, sent only to our website (headers
+`CF-Access-Client-Id`, `CF-Access-Client-Secret`) and never in prod. Renew the token before it expires: create a new
+one, put it in both secrets and the Access application's "Test runs (service token)" policy, then delete the old one.
+
 ## Changing the tests
 
 Same path as every GoAwayGo repo: `feature/<name>` or `fix/<name>` → `develop` → `test` → `main` (the product repos' README → **How we work**).
